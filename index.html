@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pixel Art Creator – XYZ.am</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <style>
+    body {
+      background: #111827;
+      color: #e5e7eb;
+      min-height: 100vh;
+    }
+    .app-shell {
+      max-width: 1100px;
+      margin: 20px auto;
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .controls {
+      flex: 0 0 240px;
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 1rem;
+      padding: 1rem 1rem 1.2rem;
+      backdrop-filter: blur(10px);
+    }
+    .canvas-wrap {
+      flex: 1 1 520px;
+      background: #0f172a;
+      border-radius: 1rem;
+      padding: 1rem;
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 540px;
+    }
+    #pixelCanvas {
+      display: grid;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: #020617;
+      image-rendering: pixelated;
+      width: 512px;
+      height: 512px;
+    }
+    .pixel {
+      background: #020617;
+      cursor: crosshair;
+    }
+    .swatch {
+      width: 26px;
+      height: 26px;
+      border-radius: .5rem;
+      border: 1px solid rgba(15,23,42,.5);
+      cursor: pointer;
+    }
+    .swatch.active {
+      outline: 2px solid #f97316;
+      outline-offset: 2px;
+    }
+    .section-title {
+      font-weight: 600;
+      font-size: .9rem;
+      margin-top: .5rem;
+      margin-bottom: .35rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #94a3b8;
+    }
+    .btn-sm {
+      border-radius: .6rem;
+    }
+    footer {
+      max-width: 1100px;
+      margin: 1.5rem auto 2.5rem;
+    }
+    @media (max-width: 768px) {
+      #pixelCanvas {
+        width: 330px;
+        height: 330px;
+      }
+      .canvas-wrap {
+        min-height: 380px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container py-3">
+    <h1 class="h3 mb-3 d-flex align-items-center gap-2">
+      🎨 Pixel Art Creator
+      <span class="badge bg-secondary">512px export</span>
+    </h1>
+    <p class="text-muted mb-4">
+      Draw on a small grid and export as a crisp 512×512 PNG.
+    </p>
+
+    <div class="app-shell">
+      <!-- Controls -->
+      <div class="controls">
+        <div class="section-title">Canvas</div>
+        <div class="mb-2">
+          <label class="form-label mb-1">Grid size (cells)</label>
+          <div class="input-group input-group-sm">
+            <input type="number" id="gridSize" class="form-control form-control-sm" value="16" min="4" max="64">
+            <button class="btn btn-outline-light btn-sm" id="applyGrid">Set</button>
+          </div>
+          <small class="text-muted">Exports as 512×512.</small>
+        </div>
+
+        <div class="section-title mt-3">Color</div>
+        <input type="color" id="colorPicker" value="#f97316" class="form-control form-control-color mb-2" title="Choose a color">
+        <div class="d-flex flex-wrap gap-2 mb-2" id="palette"></div>
+        <button class="btn btn-sm btn-outline-light mb-3" id="eraserBtn">🧽 Eraser</button>
+
+        <div class="section-title mt-2">Actions</div>
+        <div class="d-grid gap-2">
+          <button class="btn btn-sm btn-light" id="clearBtn">Clear</button>
+          <button class="btn btn-sm btn-warning" id="exportBtn">Export PNG</button>
+        </div>
+
+        <div class="section-title mt-3">Tips</div>
+        <ul class="small text-muted mb-0 ps-3">
+          <li>Click + drag to draw.</li>
+          <li>Use 32×32 for more detail.</li>
+          <li>Export is always 512px.</li>
+        </ul>
+      </div>
+
+      <!-- Canvas -->
+      <div class="canvas-wrap">
+        <div id="pixelCanvas"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="container">
+    <!-- Google AdSense (XYZ AM Page) -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5600424225032954"
+      crossorigin="anonymous"></script>
+    <!-- XYZ AM Page -->
+    <ins class="adsbygoogle"
+      style="display:block"
+      data-ad-client="ca-pub-5600424225032954"
+      data-ad-slot="5679674456"
+      data-ad-format="auto"
+      data-full-width-responsive="true"></ins>
+    <script>
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+    <p class="text-muted small mt-3 mb-0">© 2025 XYZ.am tools – Pixel Art Creator</p>
+  </footer>
+
+  <script>
+    const pixelCanvas = document.getElementById('pixelCanvas');
+    const gridSizeInput = document.getElementById('gridSize');
+    const applyGridBtn = document.getElementById('applyGrid');
+    const colorPicker = document.getElementById('colorPicker');
+    const clearBtn = document.getElementById('clearBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const eraserBtn = document.getElementById('eraserBtn');
+    const paletteEl = document.getElementById('palette');
+
+    // always export to 512 x 512 pixels
+    const EXPORT_SIZE = 512;
+    const EMPTY_COLOR = '#020617';   // on-screen empty
+    const EXPORT_BG  = '#ffffff';    // ✅ bright background in exported PNG
+
+    const presetColors = [
+      '#f97316', '#ef4444', '#22c55e', '#0ea5e9',
+      '#6366f1', '#a855f7', '#facc15', '#f43f5e'
+    ];
+
+    let currentColor = colorPicker.value;
+    let mouseDown = false;
+    let isEraser = false;
+
+    function buildPalette() {
+      presetColors.forEach(col => {
+        const div = document.createElement('div');
+        div.className = 'swatch';
+        div.style.background = col;
+        div.dataset.color = col;
+        div.addEventListener('click', () => {
+          isEraser = false;
+          eraserBtn.classList.remove('btn-primary');
+          currentColor = col;
+          colorPicker.value = col;
+          setActiveSwatch(col);
+        });
+        paletteEl.appendChild(div);
+      });
+      setActiveSwatch(presetColors[0]);
+    }
+
+    function setActiveSwatch(color) {
+      document.querySelectorAll('#palette .swatch').forEach(s => s.classList.remove('active'));
+      const active = Array.from(document.querySelectorAll('#palette .swatch')).find(s => s.dataset.color === color);
+      if (active) active.classList.add('active');
+    }
+
+    function generateGrid(size) {
+      pixelCanvas.innerHTML = '';
+      pixelCanvas.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+      pixelCanvas.style.gridTemplateRows = `repeat(${size}, 1fr)`;
+
+      for (let i = 0; i < size * size; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'pixel';
+        cell.style.background = EMPTY_COLOR;
+        cell.addEventListener('mousedown', paintCell);
+        cell.addEventListener('mouseover', e => {
+          if (mouseDown) paintCell(e);
+        });
+        pixelCanvas.appendChild(cell);
+      }
+    }
+
+    function paintCell(e) {
+      const cell = e.target;
+      cell.style.background = isEraser ? EMPTY_COLOR : currentColor;
+    }
+
+    // mouse handlers
+    document.body.addEventListener('mousedown', () => mouseDown = true);
+    document.body.addEventListener('mouseup', () => mouseDown = false);
+    document.body.addEventListener('mouseleave', () => mouseDown = false);
+
+    colorPicker.addEventListener('input', e => {
+      currentColor = e.target.value;
+      isEraser = false;
+      eraserBtn.classList.remove('btn-primary');
+      setActiveSwatch(currentColor);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      document.querySelectorAll('.pixel').forEach(p => p.style.background = EMPTY_COLOR);
+    });
+
+    eraserBtn.addEventListener('click', () => {
+      isEraser = !isEraser;
+      eraserBtn.classList.toggle('btn-primary', isEraser);
+    });
+
+    applyGridBtn.addEventListener('click', () => {
+      const size = Math.min(Math.max(parseInt(gridSizeInput.value, 10) || 16, 4), 64);
+      gridSizeInput.value = size;
+      generateGrid(size);
+    });
+
+    // EXPORT (bright background + fixed 512 size + border)
+    exportBtn.addEventListener('click', () => {
+      const size = Math.min(Math.max(parseInt(gridSizeInput.value, 10) || 16, 4), 64);
+      const cells = Array.from(document.querySelectorAll('.pixel'));
+
+      // 1. draw logical canvas (size × size)
+      const baseCanvas = document.createElement('canvas');
+      baseCanvas.width = size;
+      baseCanvas.height = size;
+      const baseCtx = baseCanvas.getContext('2d');
+
+      // fill with bright background
+      baseCtx.fillStyle = EXPORT_BG;
+      baseCtx.fillRect(0, 0, size, size);
+
+      // Convert EMPTY_COLOR to rgb format for comparison
+      const emptyRGB = 'rgb(2, 6, 23)';
+
+      cells.forEach((cell, index) => {
+        const x = index % size;
+        const y = Math.floor(index / size);
+        const bg = window.getComputedStyle(cell).backgroundColor;
+        
+        // Only draw non-empty pixels (skip pixels that match EMPTY_COLOR)
+        if (bg !== emptyRGB) {
+          baseCtx.fillStyle = bg;
+          baseCtx.fillRect(x, y, 1, 1);
+        }
+      });
+
+      // 2. scale to 512 x 512
+      const scaledCanvas = document.createElement('canvas');
+      scaledCanvas.width = EXPORT_SIZE;
+      scaledCanvas.height = EXPORT_SIZE;
+      const scaledCtx = scaledCanvas.getContext('2d');
+      scaledCtx.imageSmoothingEnabled = false; // keep pixelated
+      scaledCtx.fillStyle = EXPORT_BG;
+      scaledCtx.fillRect(0, 0, EXPORT_SIZE, EXPORT_SIZE);
+      scaledCtx.drawImage(baseCanvas, 0, 0, EXPORT_SIZE, EXPORT_SIZE);
+
+      // 3. draw light border so it's visually 512 everywhere
+      scaledCtx.strokeStyle = '#d1d5db';
+      scaledCtx.lineWidth = 4;
+      scaledCtx.strokeRect(2, 2, EXPORT_SIZE - 4, EXPORT_SIZE - 4);
+
+      // 4. download
+      const link = document.createElement('a');
+      link.download = 'pixel-art-512.png';
+      link.href = scaledCanvas.toDataURL('image/png');
+      link.click();
+    });
+
+    // init
+    buildPalette();
+    generateGrid(16); // default logical grid
+  </script>
+</body>
+</html>
